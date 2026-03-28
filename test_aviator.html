@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mobile Aviator Test</title>
+    <style>
+        body { background: #0b0c0f; color: white; font-family: sans-serif; text-align: center; margin: 0; padding: 20px; }
+        .game-box { background: #15191e; border: 2px solid #2d3139; border-radius: 15px; height: 250px; position: relative; overflow: hidden; margin-bottom: 20px; }
+        #multiplier { font-size: 50px; margin-top: 80px; font-weight: bold; }
+        #plane { position: absolute; bottom: 10px; left: 10px; font-size: 30px; transition: 0.1s; }
+        
+        .controls { background: #1c2127; padding: 15px; border-radius: 10px; }
+        input { width: 80%; padding: 10px; margin: 10px 0; background: #2a2f36; border: 1px solid #444; color: white; border-radius: 5px; }
+        button { width: 90%; padding: 15px; font-size: 18px; font-weight: bold; border-radius: 8px; border: none; cursor: pointer; }
+        .bet-btn { background: #e91e63; color: white; }
+        .cash-btn { background: #ffc107; color: black; display: none; }
+        
+        .admin-box { margin-top: 20px; border: 1px dashed #4caf50; padding: 10px; font-size: 12px; }
+    </style>
+</head>
+<body>
+
+    <h2>Aviator Test</h2>
+    <p>Balance: $<span id="bal">1000</span></p>
+
+    <div class="game-box">
+        <div id="multiplier">1.00x</div>
+        <div id="plane">✈️</div>
+    </div>
+
+    <div class="controls">
+        <input type="number" id="betAmt" value="10">
+        <button id="btnBet" class="bet-btn" onclick="start()">BET</button>
+        <button id="btnCash" class="cash-btn" onclick="cashout()">CASHOUT</button>
+    </div>
+
+    <div class="admin-box">
+        <p>কন্ট্রোল প্যানেল (এডিট করো):</p>
+        পরের বার ফাটবে: <input type="number" id="nextCrash" value="2.00" style="width: 50px;"> x-এ
+    </div>
+
+<script>
+    let balance = 1000;
+    let x = 1.00;
+    let timer;
+    let planeX = 10, planeY = 10;
+
+    function start() {
+        let bet = parseFloat(document.getElementById('betAmt').value);
+        if(bet > balance) return alert("টাকা নাই!");
+        
+        balance -= bet;
+        document.getElementById('bal').innerText = balance;
+        
+        x = 1.00;
+        planeX = 10; planeY = 10;
+        document.getElementById('btnBet').style.display = 'none';
+        document.getElementById('btnCash').style.display = 'block';
+        document.getElementById('multiplier').style.color = "white";
+
+        let crashAt = parseFloat(document.getElementById('nextCrash').value);
+
+        timer = setInterval(() => {
+            x += 0.01 + (x * 0.001);
+            document.getElementById('multiplier').innerText = x.toFixed(2) + "x";
+            
+            // প্লেন নড়াচড়া
+            planeX += 1; planeY += 0.5;
+            document.getElementById('plane').style.transform = `translate(${planeX}px, -${planeY}px)`;
+
+            if(x >= crashAt) {
+                clearInterval(timer);
+                document.getElementById('multiplier').innerText = "FLEW AWAY!";
+                document.getElementById('multiplier').style.color = "red";
+                reset();
+            }
+        }, 100);
+    }
+
+    function cashout() {
+        clearInterval(timer);
+        let win = parseFloat(document.getElementById('betAmt').value) * x;
+        balance += win;
+        document.getElementById('bal').innerText = balance.toFixed(2);
+        alert("তুমি জিতেছ: $" + win.toFixed(2));
+        reset();
+    }
+
+    function reset() {
+        document.getElementById('btnBet').style.display = 'block';
+        document.getElementById('btnCash').style.display = 'none';
+    }
+</script>
+</body>
+</html>
