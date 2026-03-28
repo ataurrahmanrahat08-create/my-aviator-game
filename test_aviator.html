@@ -1,95 +1,179 @@
 <!DOCTYPE html>
-<html>
+<html lang="bn">
 <head>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Mobile Aviator Test</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Aviator Pro - Official</title>
     <style>
-        body { background: #0b0c0f; color: white; font-family: sans-serif; text-align: center; margin: 0; padding: 20px; }
-        .game-box { background: #15191e; border: 2px solid #2d3139; border-radius: 15px; height: 250px; position: relative; overflow: hidden; margin-bottom: 20px; }
-        #multiplier { font-size: 50px; margin-top: 80px; font-weight: bold; }
-        #plane { position: absolute; bottom: 10px; left: 10px; font-size: 30px; transition: 0.1s; }
+        :root { --main-bg: #1b1c21; --card-bg: #2c2d33; --accent: #cb011a; --gold: #dbac00; }
+        body { background: var(--main-bg); color: white; font-family: 'Roboto', sans-serif; margin: 0; overflow: hidden; display: flex; flex-direction: column; align-items: center; }
         
-        .controls { background: #1c2127; padding: 15px; border-radius: 10px; }
-        input { width: 80%; padding: 10px; margin: 10px 0; background: #2a2f36; border: 1px solid #444; color: white; border-radius: 5px; }
-        button { width: 90%; padding: 15px; font-size: 18px; font-weight: bold; border-radius: 8px; border: none; cursor: pointer; }
-        .bet-btn { background: #e91e63; color: white; }
-        .cash-btn { background: #ffc107; color: black; display: none; }
+        /* Top Bar */
+        .top-bar { width: 100%; padding: 10px 15px; display: flex; justify-content: space-between; background: #141518; box-sizing: border-box; border-bottom: 2px solid #252525; }
+        .balance { color: #28a745; font-weight: bold; font-size: 18px; }
+
+        /* Game Stage */
+        .stage { width: 95%; max-width: 500px; height: 300px; background: #000; margin-top: 15px; border-radius: 15px; position: relative; overflow: hidden; border: 1px solid #333; }
+        .grid-bg { position: absolute; width: 200%; height: 200%; background-image: linear-gradient(#1e1e1e 1px, transparent 1px), linear-gradient(90deg, #1e1e1e 1px, transparent 1px); background-size: 40px 40px; transform: translate(-25%, -25%); }
         
-        .admin-box { margin-top: 20px; border: 1px dashed #4caf50; padding: 10px; font-size: 12px; }
+        #canvas { position: absolute; bottom: 0; left: 0; z-index: 5; }
+        #multiplier { position: absolute; top: 40%; left: 50%; transform: translate(-50%, -50%); font-size: 55px; font-weight: 900; z-index: 10; text-shadow: 0 0 20px rgba(255,255,255,0.2); }
+        
+        /* Plane Icon */
+        #plane { position: absolute; width: 60px; z-index: 15; display: none; transform: rotate(-10deg); }
+
+        /* Betting Area */
+        .bet-area { width: 95%; max-width: 500px; background: var(--card-bg); margin-top: 10px; padding: 15px; border-radius: 15px; box-sizing: border-box; }
+        .input-group { display: flex; gap: 10px; margin-bottom: 10px; }
+        input { flex: 1; background: #141518; border: 1px solid #444; color: white; padding: 12px; border-radius: 8px; text-align: center; font-size: 18px; font-weight: bold; }
+        
+        .btn-bet { width: 100%; padding: 18px; border: none; border-radius: 12px; font-size: 20px; font-weight: bold; cursor: pointer; text-transform: uppercase; background: #28a745; color: white; box-shadow: 0 4px 0 #1e7e34; }
+        .btn-bet.betting { background: var(--accent); box-shadow: 0 4px 0 #9e0114; }
+        .btn-cashout { background: var(--gold); color: black; box-shadow: 0 4px 0 #b38c00; display: none; }
+
+        /* Status Texts */
+        #status { font-size: 12px; color: #888; margin-top: 10px; }
+        .flew-away { color: var(--accent) !important; font-size: 30px !important; }
     </style>
 </head>
 <body>
 
-    <h2>Aviator Test</h2>
-    <p>Balance: $<span id="bal">1000</span></p>
+<div class="top-bar">
+    <div style="color: #aaa;">Aviator</div>
+    <div class="balance">$<span id="bal">1000.00</span></div>
+</div>
 
-    <div class="game-box">
-        <div id="multiplier">1.00x</div>
-        <div id="plane">✈️</div>
-    </div>
+<div class="stage" id="stage">
+    <div class="grid-bg" id="grid"></div>
+    <div id="multiplier">1.00x</div>
+    <img src="https://i.ibb.co/L6S8r0K/aviator-plane.png" id="plane" alt="plane">
+    <canvas id="canvas"></canvas>
+</div>
 
-    <div class="controls">
-        <input type="number" id="betAmt" value="10">
-        <button id="btnBet" class="bet-btn" onclick="start()">BET</button>
-        <button id="btnCash" class="cash-btn" onclick="cashout()">CASHOUT</button>
+<div class="bet-area">
+    <div class="input-group">
+        <input type="number" id="betAmt" value="10.00">
     </div>
-
-    <div class="admin-box">
-        <p>কন্ট্রোল প্যানেল (এডিট করো):</p>
-        পরের বার ফাটবে: <input type="number" id="nextCrash" value="2.00" style="width: 50px;"> x-এ
-    </div>
+    <button id="mainBtn" class="btn-bet" onclick="handleAction()">BET</button>
+    <div id="status">Waiting for next round...</div>
+</div>
 
 <script>
+    // গুরুত্বপূর্ণ: আপনার Firebase URL এখানে দিন
+    const FIREBASE_URL = https://i.ibb.co/L6S8r0K/aviator-plane.png/crashPoint.json"; 
+
     let balance = 1000;
-    let x = 1.00;
-    let timer;
-    let planeX = 10, planeY = 10;
+    let currentX = 1.00;
+    let crashAt = 2.00;
+    let isPlaying = false;
+    let isBetPlaced = false;
+    let gameLoop;
+    
+    const canvas = document.getElementById('canvas');
+    const ctx = canvas.getContext('2d');
+    const plane = document.getElementById('plane');
+    const multText = document.getElementById('multiplier');
 
-    function start() {
-        let bet = parseFloat(document.getElementById('betAmt').value);
-        if(bet > balance) return alert("টাকা নাই!");
-        
-        balance -= bet;
-        document.getElementById('bal').innerText = balance;
-        
-        x = 1.00;
-        planeX = 10; planeY = 10;
-        document.getElementById('btnBet').style.display = 'none';
-        document.getElementById('btnCash').style.display = 'block';
-        document.getElementById('multiplier').style.color = "white";
+    // Canvas Size Setup
+    canvas.width = window.innerWidth * 0.95;
+    canvas.height = 300;
 
-        let crashAt = parseFloat(document.getElementById('nextCrash').value);
-
-        timer = setInterval(() => {
-            x += 0.01 + (x * 0.001);
-            document.getElementById('multiplier').innerText = x.toFixed(2) + "x";
-            
-            // প্লেন নড়াচড়া
-            planeX += 1; planeY += 0.5;
-            document.getElementById('plane').style.transform = `translate(${planeX}px, -${planeY}px)`;
-
-            if(x >= crashAt) {
-                clearInterval(timer);
-                document.getElementById('multiplier').innerText = "FLEW AWAY!";
-                document.getElementById('multiplier').style.color = "red";
-                reset();
-            }
-        }, 100);
+    function syncCrashPoint() {
+        fetch(FIREBASE_URL)
+        .then(r => r.json())
+        .then(data => { if(data) crashAt = parseFloat(data); });
     }
 
-    function cashout() {
-        clearInterval(timer);
-        let win = parseFloat(document.getElementById('betAmt').value) * x;
+    setInterval(syncCrashPoint, 2000);
+
+    function startRound() {
+        currentX = 1.00;
+        isPlaying = true;
+        multText.classList.remove('flew-away');
+        multText.style.color = "white";
+        plane.style.display = 'block';
+        
+        let startTime = Date.now();
+
+        gameLoop = setInterval(() => {
+            let elapsed = (Date.now() - startTime) / 1000;
+            currentX = Math.pow(Math.E, 0.08 * elapsed); // রিয়েল ম্যাথমেটিক্যাল কার্ভ
+            
+            multText.innerText = currentX.toFixed(2) + "x";
+
+            // Drawing Plane Path
+            drawPath(elapsed);
+
+            if(currentX >= crashAt) {
+                crashGame();
+            }
+        }, 50);
+    }
+
+    function drawPath(t) {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.beginPath();
+        ctx.strokeStyle = "#cb011a";
+        ctx.lineWidth = 5;
+        ctx.moveTo(0, canvas.height);
+        
+        // কার্ভ এনিমেশন
+        let px = t * 40;
+        let py = canvas.height - (Math.pow(t, 1.5) * 15);
+        
+        ctx.quadraticCurveTo(px/2, canvas.height, px, py);
+        ctx.stroke();
+        
+        plane.style.left = (px - 30) + "px";
+        plane.style.bottom = (canvas.height - py - 20) + "px";
+    }
+
+    function handleAction() {
+        let btn = document.getElementById('mainBtn');
+        if(!isBetPlaced) {
+            // Bet Place
+            let amt = parseFloat(document.getElementById('betAmt').value);
+            balance -= amt;
+            document.getElementById('bal').innerText = balance.toFixed(2);
+            isBetPlaced = true;
+            btn.innerText = "WAITING...";
+            btn.classList.add('betting');
+        } else if(isPlaying) {
+            // Cashout
+            cashOut();
+        }
+    }
+
+    function cashOut() {
+        let win = parseFloat(document.getElementById('betAmt').value) * currentX;
         balance += win;
         document.getElementById('bal').innerText = balance.toFixed(2);
-        alert("তুমি জিতেছ: $" + win.toFixed(2));
-        reset();
+        alert("Success! Win: $" + win.toFixed(2));
+        isBetPlaced = false;
+        resetUI();
     }
 
-    function reset() {
-        document.getElementById('btnBet').style.display = 'block';
-        document.getElementById('btnCash').style.display = 'none';
+    function crashGame() {
+        clearInterval(gameLoop);
+        isPlaying = false;
+        isBetPlaced = false;
+        multText.innerText = "FLEW AWAY!";
+        multText.classList.add('flew-away');
+        plane.style.display = 'none';
+        resetUI();
+        setTimeout(startRound, 4000); // ৪ সেকেন্ড পর অটো নতুন রাউন্ড
     }
+
+    function resetUI() {
+        let btn = document.getElementById('mainBtn');
+        btn.innerText = "BET";
+        btn.classList.remove('betting');
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+    }
+
+    // শুরুতে গেম শুরু
+    setTimeout(startRound, 2000);
 </script>
+
 </body>
 </html>
